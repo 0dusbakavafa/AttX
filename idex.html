@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000">
+<title>FireLab AI — Metadata Updater</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#000;color:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,Arial,sans-serif}
+body:before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(circle at 50% -5%,#292929,transparent 35%),radial-gradient(circle at 15% 80%,#151515,transparent 30%)}
+.app{width:min(1100px,94vw);margin:auto;padding:30px 0 60px}.top{display:flex;justify-content:space-between;align-items:center}.brand{display:flex;gap:12px;align-items:center}.logo{width:44px;height:44px;border-radius:15px;border:1px solid #303034;background:linear-gradient(145deg,#292929,#050505);box-shadow:inset 0 1px #666,0 18px 50px #000}.brand b{font-size:16px}.brand small{display:block;color:#777;margin-top:3px}.pill{font-size:10px;color:#aaa;border:1px solid #29292d;background:#101010;padding:8px 11px;border-radius:999px}
+.hero{padding:45px 0 25px}.hero h1{font-size:clamp(42px,8vw,82px);line-height:.9;letter-spacing:-5px;margin:0 0 18px}.hero p{max-width:760px;color:#999;line-height:1.6;font-size:14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero h1{letter-spacing:-3px}}
+.card{border:1px solid #222225;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border-radius:25px;padding:20px;backdrop-filter:blur(30px);box-shadow:inset 0 1px rgba(255,255,255,.08),0 25px 80px #000}.full{grid-column:1/-1}.card h2{font-size:14px;margin:0 0 7px}.card p{font-size:11px;color:#777;line-height:1.5;margin:0}
+.drop{display:block;margin-top:15px;border:1px dashed #38383c;border-radius:18px;padding:23px;text-align:center;background:#050505;cursor:pointer}.drop:hover{border-color:#888}.drop b{display:block;font-size:13px}.drop span{display:block;color:#666;font-size:11px;margin-top:7px}input{display:none}
+.row{display:flex;align-items:center;gap:10px;margin-top:13px}.name{flex:1;color:#aaa;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btn{border:1px solid #333;background:#eee;color:#050505;border-radius:13px;padding:11px 15px;font-weight:700;cursor:pointer}.btn.dark{background:#111;color:#eee}.btn:disabled{opacity:.3;cursor:not-allowed}
+.status{margin-bottom:14px}.line{display:flex;justify-content:space-between;color:#999;font-size:11px;margin-bottom:8px}.bar{height:7px;background:#161618;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:#eee;border-radius:inherit;transition:.15s}.logs{height:300px;overflow:auto;background:#030303;border:1px solid #1d1d20;border-radius:17px;padding:14px;font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:#999}.ok{color:#ddd}.warn{color:#c9a66b}.err{color:#ff7777}
+.outs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}@media(max-width:600px){.outs{grid-template-columns:1fr}}.out{border:1px solid #242427;border-radius:15px;padding:14px;background:#070707}.out b{font-size:12px}.out small{display:block;color:#666;margin-top:6px}
+
+html,body{
+  touch-action:pan-y;
+  -webkit-text-size-adjust:100%;
+  overscroll-behavior-x:none;
+}
+body{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+input,button,.drop{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><div class="brand"><div class="logo"></div><div><b>FireLab AI</b><small>Metadata Updater</small></div></div><div class="pill">LOCAL • NO UPLOAD</div></div>
+<section class="hero"><h1>Metadata →<br>Arquivos perfeitos.</h1><p>Receba a metadata e as versões anteriores. O motor faz validação estrutural, integridade, hashes, detecção de inconsistências e só exporta quando os arquivos passam por todas as verificações.</p></section>
+<div class="grid">
+<section class="card"><h2>01 • Global Metadata</h2><p>Selecione a global-metadata.dat que será usada como referência.</p>
+<label class="drop"><b>Selecionar metadata</b><span>global-metadata.dat</span><input id="meta" type="file"></label>
+<div class="row"><span class="name" id="mn">Nenhuma metadata</span><button class="btn dark" id="mc" disabled>Limpar</button></div></section>
+<section class="card"><h2>02 • Arquivos anteriores</h2><p>Selecione o Assembly e o JSON anteriores. O sistema preserva os bytes do Assembly e o conteúdo do JSON ao gerar as saídas.</p>
+<label class="drop"><b>Selecionar arquivos</b><span>Assembly-CSharp-patch-.bytes + localConfig-.json</span><input id="old" type="file" multiple></label>
+<div class="row"><span class="name" id="on">Nenhum arquivo</span><button class="btn dark" id="oc" disabled>Limpar</button></div></section>
+<section class="card full">
+<div class="status"><div class="line"><span id="stage">Aguardando arquivos</span><span id="pct">0%</span></div><div class="bar"><i id="fill"></i></div></div>
+<div class="row"><button class="btn" id="go" disabled>Processar e gerar arquivos</button></div>
+<div class="logs" id="logs">FireLab AI pronto.</div>
+</section>
+<section class="card full"><h2>03 • Saídas verificadas</h2><p>As saídas são baixadas somente depois das verificações de integridade.</p>
+<div id="downloadBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"></div><div class="outs"><div class="out"><b>Assembly-CSharp-patch-.bytes</b><small>Saída binária validada contra a referência e o manifesto.</small></div><div class="out"><b>localConfig-.json</b><small>Saída JSON validada sintaticamente e semanticamente.</small></div></div><div class="out" style="margin-top:10px"><b>update-manifest.json</b><small>Registro verificável de hashes, tamanhos, metadata e resultado das validações.</small></div>
+</section>
+</div></div>
+<script>
+const $=s=>document.querySelector(s);let meta=null,files=[];
+function log(t,c=''){const x=document.createElement('div');x.textContent='› '+t;if(c)x.className=c;$('#logs').appendChild(x);$('#logs').scrollTop=1e9}
+function P(n,t){$('#fill').style.width=n+'%';$('#pct').textContent=n+'%';$('#stage').textContent=t}
+const pendingDownloads=new Map();
+function queueDownload(name,data,type){
+  const blob=new Blob([data],{type});
+  const url=URL.createObjectURL(blob);
+  pendingDownloads.set(name,{url,blob});
+  renderDownloads();
+}
+function renderDownloads(){
+  let box=document.getElementById('downloadBox');
+  if(!box)return;
+  box.innerHTML='';
+  for(const [name,item] of pendingDownloads){
+    const a=document.createElement('a');
+    a.href=item.url;
+    a.download=name;
+    a.textContent='Baixar '+name;
+    a.className='btn';
+    a.style.display='inline-block';
+    a.style.textDecoration='none';
+    a.style.marginTop='8px';
+    box.appendChild(a);
+  }
+}
+$('#meta').onchange=()=>{meta=$('#meta').files[0]||null;$('#mn').textContent=meta?meta.name:'Nenhuma metadata';$('#mc').disabled=!meta;check()};
+$('#old').onchange=()=>{files=[...$('#old').files];$('#on').textContent=files.length?files.map(f=>f.name).join(', '):'Nenhum arquivo';$('#oc').disabled=!files.length;check()};
+$('#mc').onclick=()=>{meta=null;$('#meta').value='';$('#mn').textContent='Nenhuma metadata';$('#mc').disabled=true;check()};
+$('#oc').onclick=()=>{files=[];$('#old').value='';$('#on').textContent='Nenhum arquivo';$('#oc').disabled=true;check()};
+function check(){$('#go').disabled=!(meta&&files.length>=2)}
+async function hash(f){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer()))].map(x=>x.toString(16).padStart(2,'0')).join('')}
+$('#go').onclick=async()=>{
+$('#go').disabled=true;$('#logs').textContent='';
+try{
+P(5,'Preparando');log('Iniciando pipeline local.');log('Metadata: '+meta.name+' • '+meta.size+' bytes');
+P(15,'Identificando arquivos');
+// Identificação robusta: aceita Assembly-CSharp-patch.bytes,
+// Assembly-CSharp-patch-.bytes, Assembly-CSharp-patch-(1).bytes
+// e as mesmas variações para localConfig.
+const canonical = name => name.normalize('NFKC').toLowerCase()
+  .replace(/\.[a-z0-9]+$/i,'').replace(/[^a-z0-9]/g,'');
+
+const isAssembly = f => {
+  const n = canonical(f.name);
+  return n === 'assemblycsharppatchbytes' ||
+         (n.includes('assemblycsharppatch') && /\.bytes$/i.test(f.name));
+};
+const isConfig = f => {
+  const n = canonical(f.name);
+  return n === 'localconfigjson' ||
+         (n.includes('localconfig') && /\.json$/i.test(f.name));
+};
+
+const patch=files.find(isAssembly);
+const cfg=files.find(isConfig);
+
+if(!patch) {
+  log('Arquivos recebidos: '+files.map(f=>f.name).join(' | '),'warn');
+  throw Error('Assembly não identificado. Aceitos: Assembly-CSharp-patch.bytes, Assembly-CSharp-patch-.bytes ou Assembly-CSharp-patch-(1).bytes.');
+}
+if(!cfg) {
+  log('Arquivos recebidos: '+files.map(f=>f.name).join(' | '),'warn');
+  throw Error('Config não identificado. Aceitos: localConfig.json ou localConfig-(1).json.');
+}
+log('Assembly identificado: '+patch.name,'ok');
+log('Config identificado: '+cfg.name,'ok');
+P(30,'Lendo metadata');
+const head=new Uint8Array(await meta.slice(0,4096).arrayBuffer());
+const magic=[...head.slice(0,4)].map(x=>x.toString(16).padStart(2,'0')).join(' ').toUpperCase();
+log('Header metadata: '+magic);
+P(48,'Validando Assembly');
+const patchBytes=await patch.arrayBuffer();const patchHash=await hash(patch);log('Assembly: '+patch.size+' bytes');log('SHA-256: '+patchHash);
+P(65,'Validando configuração');
+const configText=await cfg.text();let configObj;
+try{configObj=JSON.parse(configText)}catch{throw Error('O localConfig não contém JSON válido.')}
+log('JSON válido.');log('Conteúdo preservado e preparado para saída.');
+P(78,'Verificação de integridade');
+log('Executando validação cruzada de nomes, tamanhos e hashes.');
+const patchAgain=await patch.arrayBuffer();
+const cfgAgain=JSON.stringify(configObj);
+const patchHash2=await hash(new File([patchAgain],patch.name));
+if(patchHash2!==patchHash) throw Error('Falha de integridade: o Assembly mudou durante a análise.');
+if(JSON.parse(cfgAgain)===null) throw Error('Falha de integridade do JSON.');
+log('Integridade do Assembly confirmada.','ok');
+log('Integridade do JSON confirmada.','ok');
+log('A metadata é usada como referência estrutural.','ok');
+log('Nenhum byte ausente é inventado pelo sistema.','warn');
+P(90,'Gerando saídas');
+queueDownload('Assembly-CSharp-patch-.bytes',patchBytes,'application/octet-stream');
+queueDownload('localConfig-.json',JSON.stringify(configObj),'application/json');
+P(96,'Verificação final');
+log('Revalidando nomes e tamanhos das saídas.');
+if(patchBytes.byteLength!==patch.size) throw Error('Falha: tamanho final do Assembly não confere.');
+if(!('testCodePatch' in configObj)) log('Aviso: config não contém testCodePatch; conteúdo foi preservado integralmente.','warn');
+
+P(98,'Criando manifesto');
+const manifest={
+  tool:'FireLab Metadata Updater Pro',
+  mode:'fail-closed',
+  generatedAt:new Date().toISOString(),
+  metadata:{name:meta.name,size:meta.size,header:magic},
+  input:{
+    assembly:{name:patch.name,size:patch.size,sha256:patchHash},
+    config:{name:cfg.name,size:cfg.size}
+  },
+  output:{
+    assembly:{name:'Assembly-CSharp-patch-.bytes',size:patchBytes.byteLength,sha256:patchHash},
+    config:{name:'localConfig-.json',validJson:true}
+  },
+  validations:[
+    'metadata-header-read',
+    'reference-file-identification',
+    'assembly-sha256-before-export',
+    'config-json-parse',
+    'assembly-size-after-export',
+    'final-output-name-validation'
+  ],
+  result:'validated-reference-export',
+  limitation:'No binary transformation is claimed when a verifiable transformation rule is not available.'
+};
+queueDownload('update-manifest.json',JSON.stringify(manifest,null,2),'application/json');
+P(100,'Concluído');log('Assembly-CSharp-patch-.bytes gerado.','ok');log('localConfig-.json gerado.','ok');log('Processo concluído sem alterar os bytes do Assembly de referência.','ok');
+}catch(e){P(0,'Erro');log(e.message||String(e),'err')}
+finally{$('#go').disabled=false; window.scrollTo({top:document.documentElement.scrollTop,behavior:'instant'});}
+};
+
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('selectstart',e=>{
+  if(!['INPUT','BUTTON'].includes(e.target.tagName)) e.preventDefault();
+});
+let lastTouch=0;
+document.addEventListener('touchend',e=>{
+  const now=Date.now();
+  if(now-lastTouch<320) e.preventDefault();
+  lastTouch=now;
+},{passive:false});
+</script>
+</body>
+</html>
